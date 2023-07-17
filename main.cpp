@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -334,6 +335,7 @@ int main() {
     // Variables para el control del bucle principal
     bool running = true;
     int selectedOption = 0;
+    fileList = (char **)malloc(sizeof(char *) * 256);
 
     while (running) {
         SDL_Event event;
@@ -436,6 +438,10 @@ int main() {
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();
+    for (int i = 0; i < numFiles; i++) {
+    free(fileList[i]);
+    }
+    free(fileList);
 
     return 0;
 }
