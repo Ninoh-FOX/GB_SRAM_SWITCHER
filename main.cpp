@@ -17,26 +17,34 @@
 #define WINDOW_WIDTH    640
 #define WINDOW_HEIGHT   480
 
-bool fileListGenerated = false;
-char **fileList = NULL;
-int numFiles = 0;
+typedef struct {
+    char **fileList;
+    int numFiles;
+} FileListData;
 
-void listFiles(const char *dirPath, char **fileList, int *numFiles) {
-    DIR *dir = opendir(dirPath);
-    if (dir == NULL) {
+void listFiles(const char *dirPath, FileListData *fileData) {
+    struct dirent **namelist;
+    int numFiles = scandir(dirPath, &namelist, NULL, alphasort);
+    if (numFiles < 0) {
         printf("No se pudo abrir el directorio: %s\n", dirPath);
         return;
     }
 
-    struct dirent *ent;
-    while ((ent = readdir(dir)) != NULL) {
-        if (ent->d_name[0] != '.') {
-            fileList[*numFiles] = strdup(ent->d_name);
-            (*numFiles)++;
+    for (int i = 0; i < numFiles; i++) {
+        if (namelist[i]->d_name[0] != '.') {
+            fileData->fileList[fileData->numFiles] = strdup(namelist[i]->d_name);
+            (fileData->numFiles)++;
         }
+        free(namelist[i]);
     }
+    free(namelist);
+}
 
-    closedir(dir);
+void freeFileList(FileListData *fileData) {
+    for (int i = 0; i < fileData->numFiles; i++) {
+        free(fileData->fileList[i]);
+    }
+    free(fileData->fileList);
 }
 
 void switchData(const char *filePath) {
@@ -335,8 +343,10 @@ int main() {
     // Variables para el control del bucle principal
     bool running = true;
     int selectedOption = 0;
-    fileList = (char **)malloc(sizeof(char *) * 256);
-
+    int MAX_FILES = 256;
+    FileListData fileListData;
+    fileListData.numFiles = 0;
+    fileListData.fileList = reinterpret_cast<char**>(malloc(sizeof(char*) * MAX_FILES));  // Asegurar suficiente espacio para MAX_FILES nombres de archivo
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -358,29 +368,33 @@ int main() {
                         switch (selectedOption) {
                             case 0:
                                 printf("Seleccionaste 'Intercambiar datos SRM'\n");
-                                if (!fileListGenerated) {
-                                    listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual", fileList, &numFiles);
-                                    fileListGenerated = true;
-                                }
-                                
-                                if (numFiles > 0 && numFiles > selectedOption) {
+                                if (fileListData.numFiles > 0 && selectedOption < fileListData.numFiles) {
                                     char filePath[256];
-                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", fileList[selectedOption]);
+                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", fileListData.fileList[selectedOption]);
                                     switchData(filePath);
                                 }
+                                
+                                for (int i = 0; i < fileListData.numFiles; i++) {
+                                    free(fileListData.fileList[i]);
+                                }
+                                freeFileList(&fileListData);
+                                fileListData.numFiles = 0;
+                                listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual", &fileListData);
                                 break;
                             case 1:
                                 printf("Seleccionaste 'Restaurar datos SRM'\n");
-                                if (!fileListGenerated) {
-                                    listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay", fileList, &numFiles);
-                                    fileListGenerated = true;
-                                }
-
-                                if (numFiles > 0 && numFiles > selectedOption) {
+                                if (fileListData.numFiles > 0 && selectedOption < fileListData.numFiles) {
                                     char filePath[256];
-                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", fileList[selectedOption]);
+                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", fileListData.fileList[selectedOption]);
                                     restoreData(filePath);
                                 }
+                                
+                                for (int i = 0; i < fileListData.numFiles; i++) {
+                                    free(fileListData.fileList[i]);
+                                }
+                                freeFileList(&fileListData);
+                                fileListData.numFiles = 0;
+                                listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay", &fileListData);
                                 break;
                             case 2:
                                 running = false;
@@ -389,8 +403,8 @@ int main() {
                         break;
                     case BUTTON_B:
                         printf("Volviendo al menú principal\n");
-						fileListGenerated = false;
-                        numFiles = 0;
+						freeFileList(&fileListData);
+                        fileListData.numFiles = 0;
                         selectedOption = 0;
                         break;
                     default:
@@ -438,10 +452,7 @@ int main() {
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();
-    for (int i = 0; i < numFiles; i++) {
-    free(fileList[i]);
-    }
-    free(fileList);
+    freeFileList(&fileListData);
 
     return 0;
 }
