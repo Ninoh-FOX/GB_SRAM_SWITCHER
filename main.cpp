@@ -49,8 +49,11 @@ void listFiles(const char* dirPath, FileListData* fileData) {
     fileData->numFiles = 0;
     for (int i = 0; i < numFiles; i++) {
         if (namelist[i]->d_name[0] != '.') {
-            fileData->fileList[fileData->numFiles] = strdup(namelist[i]->d_name);
-            (fileData->numFiles)++;
+            char* extension = strrchr(namelist[i]->d_name, '.');
+            if (extension != NULL && strcmp(extension, ".srm") == 0) {
+                fileData->fileList[fileData->numFiles] = strdup(namelist[i]->d_name);
+                (fileData->numFiles)++;
+            }
         }
         free(namelist[i]);
     }
@@ -63,6 +66,7 @@ void freeFileList(FileListData* fileData) {
     }
     free(fileData->fileList);
 }
+
 
 void switchData(const char *filePath) {
     printf("Ejecutando switchData para el archivo: %s\n", filePath);
@@ -376,7 +380,7 @@ int main() {
         SDL_Quit();
         return 1;
     }
-
+    
     // Rutas de directorios
     const char* srmDirPath0 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual";
     const char* srmDirPath1 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay";
@@ -394,7 +398,7 @@ int main() {
                                 selectedOption--;
                             }
                         } else if (currentScreen == 1) {
-                            if (selectedOption > 2) {
+                            if (selectedOption > 0) {
                                 selectedOption--;
                             }
                         }
@@ -412,37 +416,48 @@ int main() {
                         break;
                     case BUTTON_A:
                         if (currentScreen == 0) {
-                            currentScreen = 1;
-                            selectedOption = 2;
-                            fileListData.numFiles = 0;
-                            if (selectedOption == 2) {
+                            if (selectedOption == 0) {
+                                currentScreen = 1;
+                                selectedOption = 0;
+                                fileListData.numFiles = 0;
                                 listFiles(srmDirPath0, &fileListData);
-                            } else if (selectedOption == 3) {
+                            } else if (selectedOption == 1) {
+                                currentScreen = 1;
+                                selectedOption = 0;
+                                fileListData.numFiles = 0;
                                 listFiles(srmDirPath1, &fileListData);
+                            } else if (selectedOption == 2) {
+                                printf("Opción de salida seleccionada\n");
+                                running = false;
                             }
                         } else if (currentScreen == 1) {
-                            if (selectedOption == 2) {
+                            if (selectedOption >= 0 && selectedOption < fileListData.numFiles) {
                                 char filePath[256];
-                                snprintf(filePath, sizeof(filePath), "%s/%s", srmDirPath0, fileListData.fileList[selectedOption]);
-                                switchData(filePath);
-                                printf("Datos conmutados exitosamente\n");
-                            } else if (selectedOption == 3) {
-                                char filePath[256];
-                                snprintf(filePath, sizeof(filePath), "%s/%s", srmDirPath1, fileListData.fileList[selectedOption]);
-                                restoreData(filePath);
-                                printf("Datos restaurados exitosamente\n");
+                                const char* selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
+                                snprintf(filePath, sizeof(filePath), "%s/%s", selectedDirPath, fileListData.fileList[selectedOption]);
+                                if (selectedDirPath == srmDirPath0) {
+                                    switchData(filePath);
+                                } else if (selectedDirPath == srmDirPath1) {
+                                    restoreData(filePath);
+                                }
+                                // Mostrar mensaje de confirmación
+                                printf("Datos modificados correctamente\n");
+                                currentScreen = 0;
+                                selectedOption = 0;
+                                fileListData.numFiles = 0;
                             }
-                            currentScreen = 0;
-                            selectedOption = 0;
                         }
                         break;
                     case BUTTON_B:
                         if (currentScreen == 0) {
+                            printf("Botón B seleccionado\n");
                             running = false;
                         } else if (currentScreen == 1) {
+                            printf("Volver al menú principal\n");
                             currentScreen = 0;
                             selectedOption = 0;
                             fileListData.numFiles = 0;
+                            freeFileList(&fileListData); // Liberar la memoria del listado de archivos
                         }
                         break;
                     default:
@@ -450,7 +465,7 @@ int main() {
                 }
             }
         }
-
+        
         // Limpiar pantalla
         SDL_FillRect(screen, NULL, 0x000000);
 
@@ -477,30 +492,31 @@ int main() {
             SDL_BlitSurface(option2Surface, NULL, screen, &option2Rect);
             SDL_FreeSurface(option2Surface);
 
-            // Actualizar la ventana
-            SDL_Flip(screen);
+            SDL_Surface* option3Surface = renderText("Exit", font, selectedOption == 2 ? colorRed : colorWhite);
+            SDL_Rect option3Rect;
+            option3Rect.x = WINDOW_WIDTH / 2 - option3Surface->w / 2;
+            option3Rect.y = 250;
+            SDL_BlitSurface(option3Surface, NULL, screen, &option3Rect);
+            SDL_FreeSurface(option3Surface);
         }
 
-        // Listar archivos
-        if (currentScreen == 1) {
-            int startIdx = (selectedOption == 2 || selectedOption == 3) ? 0 : ((selectedOption - 2) < 0 ? 0 : (selectedOption - 2));
-            int endIdx = (startIdx + 4) > fileListData.numFiles ? fileListData.numFiles : (startIdx + 4);
-
-            for (int i = startIdx; i < endIdx; i++) {
+        // Mostrar la lista de archivos
+        else if (currentScreen == 1) {
+            for (int i = 0; i < fileListData.numFiles; i++) {
                 SDL_Surface* textSurface = renderText(fileListData.fileList[i], font, i == selectedOption ? colorRed : colorWhite);
                 SDL_Rect textRect;
                 textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-                textRect.y = 150 + (i - startIdx) * 50;
+                textRect.y = 50 + (i * 50);
                 SDL_BlitSurface(textSurface, NULL, screen, &textRect);
                 SDL_FreeSurface(textSurface);
             }
-
-            // Actualizar la ventana
-            SDL_Flip(screen);
         }
+
+        // Actualizar la pantalla
+        SDL_Flip(screen);
     }
 
-    // Liberar recursos
+    // Liberar memoria y recursos
     freeFileList(&fileListData);
     TTF_CloseFont(font);
     TTF_Quit();
