@@ -76,11 +76,11 @@ void freeFileList(FileListData* fileData) {
 }
 
 
-void switchData(const char *filePath) {
+void switchData(const char* filePath) {
     printf("Ejecutando switchData para el archivo: %s\n", filePath);
-    
+
     // Leer los datos SRM
-    FILE *srmFile = fopen(filePath, "rb");
+    FILE* srmFile = fopen(filePath, "rb");
     if (srmFile == NULL) {
         printf("No se pudo abrir el archivo SRM: %s\n", filePath);
         return;
@@ -90,7 +90,7 @@ void switchData(const char *filePath) {
     size_t srmFileSize = ftell(srmFile);
     rewind(srmFile);
 
-    unsigned char *srmData = (unsigned char *)malloc(srmFileSize);
+    unsigned char* srmData = (unsigned char*)malloc(srmFileSize);
     if (srmData == NULL) {
         printf("No se pudo asignar memoria para los datos SRM\n");
         fclose(srmFile);
@@ -107,7 +107,7 @@ void switchData(const char *filePath) {
     fclose(srmFile);
 
     // Leer los datos RTC
-    FILE *rtcFile = fopen(filePath, "rb");
+    FILE* rtcFile = fopen(filePath, "rb");
     if (rtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC: %s\n", filePath);
         free(srmData);
@@ -118,7 +118,7 @@ void switchData(const char *filePath) {
     size_t rtcFileSize = ftell(rtcFile);
     rewind(rtcFile);
 
-    unsigned char *rtcData = (unsigned char *)malloc(rtcFileSize);
+    unsigned char* rtcData = (unsigned char*)malloc(rtcFileSize);
     if (rtcData == NULL) {
         printf("No se pudo asignar memoria para los datos RTC\n");
         fclose(rtcFile);
@@ -137,10 +137,10 @@ void switchData(const char *filePath) {
     fclose(rtcFile);
 
     // Intercambiar los datos SRM y RTC
-    unsigned char *tempSram1 = (unsigned char *)malloc(0x2000);
-    unsigned char *tempSram2 = (unsigned char *)malloc(0x2000);
-    unsigned char *tempRtc1 = (unsigned char *)malloc(0x200);
-    unsigned char *tempRtc2 = (unsigned char *)malloc(0x200);
+    unsigned char* tempSram1 = (unsigned char*)malloc(0x2000);
+    unsigned char* tempSram2 = (unsigned char*)malloc(0x2000);
+    unsigned char* tempRtc1 = (unsigned char*)malloc(0x200);
+    unsigned char* tempRtc2 = (unsigned char*)malloc(0x200);
 
     // Intercambiar los datos SRM1 y SRM2
     memcpy(tempSram1, srmData, 0x2000);
@@ -160,12 +160,13 @@ void switchData(const char *filePath) {
     free(tempRtc2);
 
     // Guardar los datos intercambiados en el archivo SRM y RTC
-    
+
     // Construir la ruta completa del archivo SRM en la carpeta .netplay
     char newPath[256];
     snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", getFilename(filePath));
-    
-    FILE *newSrmFile = fopen(newPath, "wb");
+    printf("Ruta de destino: %s\n", newPath);
+
+    FILE* newSrmFile = fopen(newPath, "w+b");
     if (newSrmFile == NULL) {
         printf("No se pudo abrir el archivo SRM para escritura\n");
         free(srmData);
@@ -183,7 +184,8 @@ void switchData(const char *filePath) {
 
     fclose(newSrmFile);
 
-    FILE *newRtcFile = fopen(newPath, "wb");
+    // Abrir el archivo RTC para escritura
+    FILE* newRtcFile = fopen(newPath, "ab");
     if (newRtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC para escritura\n");
         free(srmData);
@@ -207,11 +209,11 @@ void switchData(const char *filePath) {
     printf("Los datos SRM y RTC han sido intercambiados exitosamente\n");
 }
 
-void restoreData(const char *filePath) {
+void restoreData(const char* filePath) {
     printf("Ejecutando restoreData para el archivo: %s\n", filePath);
-    
+
     // Leer los datos SRM
-    FILE *srmFile = fopen(filePath, "rb");
+    FILE* srmFile = fopen(filePath, "rb");
     if (srmFile == NULL) {
         printf("No se pudo abrir el archivo SRM: %s\n", filePath);
         return;
@@ -221,7 +223,7 @@ void restoreData(const char *filePath) {
     size_t srmFileSize = ftell(srmFile);
     rewind(srmFile);
 
-    unsigned char *srmData = (unsigned char *)malloc(srmFileSize);
+    unsigned char* srmData = (unsigned char*)malloc(srmFileSize);
     if (srmData == NULL) {
         printf("No se pudo asignar memoria para los datos SRM\n");
         fclose(srmFile);
@@ -238,7 +240,7 @@ void restoreData(const char *filePath) {
     fclose(srmFile);
 
     // Leer los datos RTC
-    FILE *rtcFile = fopen(filePath, "rb");
+    FILE* rtcFile = fopen(filePath, "rb");
     if (rtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC: %s\n", filePath);
         free(srmData);
@@ -249,7 +251,7 @@ void restoreData(const char *filePath) {
     size_t rtcFileSize = ftell(rtcFile);
     rewind(rtcFile);
 
-    unsigned char *rtcData = (unsigned char *)malloc(rtcFileSize);
+    unsigned char* rtcData = (unsigned char*)malloc(rtcFileSize);
     if (rtcData == NULL) {
         printf("No se pudo asignar memoria para los datos RTC\n");
         fclose(rtcFile);
@@ -268,10 +270,10 @@ void restoreData(const char *filePath) {
     fclose(rtcFile);
 
     // Restaurar los datos SRM y RTC
-    unsigned char *tempSram1 = (unsigned char *)malloc(0x2000);
-    unsigned char *tempSram2 = (unsigned char *)malloc(0x2000);
-    unsigned char *tempRtc1 = (unsigned char *)malloc(0x200);
-    unsigned char *tempRtc2 = (unsigned char *)malloc(0x200);
+    unsigned char* tempSram1 = (unsigned char*)malloc(0x2000);
+    unsigned char* tempSram2 = (unsigned char*)malloc(0x2000);
+    unsigned char* tempRtc1 = (unsigned char*)malloc(0x200);
+    unsigned char* tempRtc2 = (unsigned char*)malloc(0x200);
 
     // Intercambiar los datos SRM1 y SRM2
     memcpy(tempSram1, srmData, 0x2000);
@@ -291,12 +293,13 @@ void restoreData(const char *filePath) {
     free(tempRtc2);
 
     // Guardar los datos restaurados en el archivo SRM y RTC
-    
-    // Construir la ruta completa del archivo SRM en fuera la carpeta .netplay
+
+    // Construir la ruta completa del archivo SRM fuera de la carpeta .netplay
     char newPath[256];
     snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", getFilename(filePath));
-    
-    FILE *newSrmFile = fopen(newPath, "wb");
+    printf("Ruta de destino: %s\n", newPath);
+
+    FILE* newSrmFile = fopen(newPath, "w+b");
     if (newSrmFile == NULL) {
         printf("No se pudo abrir el archivo SRM para escritura\n");
         free(srmData);
@@ -314,7 +317,7 @@ void restoreData(const char *filePath) {
 
     fclose(newSrmFile);
 
-    FILE *newRtcFile = fopen(newPath, "wb");
+    FILE* newRtcFile = fopen(newPath, "wb");
     if (newRtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC para escritura\n");
         free(srmData);
@@ -379,7 +382,7 @@ int main() {
     int selectedOption = 0;
     FileListData fileListData;
     fileListData.numFiles = 0;
-    const int MAX_FILES = 256;
+    const int MAX_FILES = 1024;
     fileListData.fileList = (char**)malloc(sizeof(char*) * MAX_FILES); // Asegurar suficiente espacio para MAX_FILES nombres de archivo
     if (fileListData.fileList == NULL) {
         printf("No se pudo asignar memoria para la lista de archivos\n");
@@ -445,15 +448,15 @@ int main() {
                             if (selectedOption >= 0 && selectedOption < fileListData.numFiles) {
                                 
                                 char filePath[256];
-                                selectedDirPath = (selectedOption == 0) ? srmDirPath1 : srmDirPath0;
+                                selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
                                 snprintf(filePath, sizeof(filePath), "%s/%s", selectedDirPath, fileListData.fileList[selectedOption]);
                                 
-                                if (selectedDirPath == srmDirPath1) {
-                                    restoreData(filePath);
-                                }
-                                
-                                if (selectedDirPath == srmDirPath0) {
+                                if (strcmp(selectedDirPath, srmDirPath0) == 0) {
                                     switchData(filePath);
+                                }
+
+                                if (strcmp(selectedDirPath, srmDirPath1) == 0) {
+                                    restoreData(filePath);
                                 }
                                 
                                 // Mostrar mensaje de confirmación
