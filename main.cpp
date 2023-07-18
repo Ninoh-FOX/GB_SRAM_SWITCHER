@@ -443,14 +443,19 @@ int main() {
                             }
                         } else if (currentScreen == 1) {
                             if (selectedOption >= 0 && selectedOption < fileListData.numFiles) {
+                                
                                 char filePath[256];
-                                selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
+                                selectedDirPath = (selectedOption == 0) ? srmDirPath1 : srmDirPath0;
                                 snprintf(filePath, sizeof(filePath), "%s/%s", selectedDirPath, fileListData.fileList[selectedOption]);
-                                if (selectedDirPath == srmDirPath0) {
-                                    switchData(filePath);
-                                } else if (selectedDirPath == srmDirPath1) {
+                                
+                                if (selectedDirPath == srmDirPath1) {
                                     restoreData(filePath);
                                 }
+                                
+                                if (selectedDirPath == srmDirPath0) {
+                                    switchData(filePath);
+                                }
+                                
                                 // Mostrar mensaje de confirmación
                                 printf("Datos modificados correctamente\n");
                                 currentScreen = 0;
