@@ -46,6 +46,16 @@ char* getFilename(const char* path) {
     return filename;
 }
 
+// Función auxiliar para obtener el nombre del archivo sin la extensión
+char* getFileNameWithoutExtension(const char* filename) {
+    const char* dot = strrchr(filename, '.');
+    size_t length = (dot != NULL) ? (dot - filename) : strlen(filename);
+    char* name = (char*)malloc(length + 1);
+    strncpy(name, filename, length);
+    name[length] = '\0';
+    return name;
+}
+
 void listFiles(const char* dirPath, FileListData* fileData) {
     struct dirent** namelist;
     int numFiles = scandir(dirPath, &namelist, NULL, alphasort);
@@ -57,13 +67,16 @@ void listFiles(const char* dirPath, FileListData* fileData) {
     fileData->numFiles = 0;
     for (int i = 0; i < numFiles; i++) {
         if (namelist[i]->d_name[0] != '.') {
-            char* extension = strrchr(namelist[i]->d_name, '.');
-            if (extension != NULL && strcmp(extension, ".srm") == 0) {
-                fileData->fileList[fileData->numFiles] = strdup(namelist[i]->d_name);
+            char* fileName = getFileNameWithoutExtension(namelist[i]->d_name);
+            char* dot = strrchr(namelist[i]->d_name, '.');
+            if (dot != NULL && strcmp(dot, ".srm") == 0) {
+                fileData->fileList[fileData->numFiles] = fileName;
                 (fileData->numFiles)++;
+            } else {
+                free(fileName);
             }
+            free(namelist[i]);
         }
-        free(namelist[i]);
     }
     free(namelist);
 }
@@ -73,6 +86,7 @@ void freeFileList(FileListData* fileData) {
         free(fileData->fileList[i]);
     }
     free(fileData->fileList);
+    fileData->numFiles = 0; // Reiniciar el contador de archivos
 }
 
 
@@ -80,9 +94,11 @@ void switchData(const char* filePath) {
     printf("Ejecutando switchData para el archivo: %s\n", filePath);
 
     // Leer los datos SRM
-    FILE* srmFile = fopen(filePath, "rb");
+    char srmFilePath[PATH_MAX];
+    snprintf(srmFilePath, sizeof(srmFilePath), "%s.srm", filePath);
+    FILE* srmFile = fopen(srmFilePath, "rb");
     if (srmFile == NULL) {
-        printf("No se pudo abrir el archivo SRM: %s\n", filePath);
+        printf("No se pudo abrir el archivo SRM: %s\n", srmFilePath);
         return;
     }
 
@@ -107,9 +123,11 @@ void switchData(const char* filePath) {
     fclose(srmFile);
 
     // Leer los datos RTC
-    FILE* rtcFile = fopen(filePath, "rb");
+    char rtcFilePath[PATH_MAX];
+    snprintf(rtcFilePath, sizeof(rtcFilePath), "%s.rtc", filePath);
+    FILE* rtcFile = fopen(rtcFilePath, "rb");
     if (rtcFile == NULL) {
-        printf("No se pudo abrir el archivo RTC: %s\n", filePath);
+        printf("No se pudo abrir el archivo RTC: %s\n", rtcFilePath);
         free(srmData);
         return;
     }
@@ -162,11 +180,11 @@ void switchData(const char* filePath) {
     // Guardar los datos intercambiados en el archivo SRM y RTC
 
     // Construir la ruta completa del archivo SRM en la carpeta .netplay
-    char newPath[256];
-    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", getFilename(filePath));
-    printf("Ruta de destino: %s\n", newPath);
+    char newSrmFilePath[PATH_MAX];
+    snprintf(newSrmFilePath, sizeof(newSrmFilePath), "%s/.netplay/%s.srm", filePath, getFilename(filePath));
+    printf("Ruta de destino SRM: %s\n", newSrmFilePath);
 
-    FILE* newSrmFile = fopen(newPath, "w+b");
+    FILE* newSrmFile = fopen(newSrmFilePath, "w+b");
     if (newSrmFile == NULL) {
         printf("No se pudo abrir el archivo SRM para escritura\n");
         free(srmData);
@@ -184,8 +202,12 @@ void switchData(const char* filePath) {
 
     fclose(newSrmFile);
 
-    // Abrir el archivo RTC para escritura
-    FILE* newRtcFile = fopen(newPath, "ab");
+    // Construir la ruta completa del archivo RTC en la carpeta .netplay
+    char newRtcFilePath[PATH_MAX];
+    snprintf(newRtcFilePath, sizeof(newRtcFilePath), "%s/.netplay/%s.rtc", filePath, getFilename(filePath));
+    printf("Ruta de destino RTC: %s\n", newRtcFilePath);
+
+    FILE* newRtcFile = fopen(newRtcFilePath, "w+b");
     if (newRtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC para escritura\n");
         free(srmData);
@@ -213,9 +235,11 @@ void restoreData(const char* filePath) {
     printf("Ejecutando restoreData para el archivo: %s\n", filePath);
 
     // Leer los datos SRM
-    FILE* srmFile = fopen(filePath, "rb");
+    char srmFilePath[PATH_MAX];
+    snprintf(srmFilePath, sizeof(srmFilePath), "%s.srm", filePath);
+    FILE* srmFile = fopen(srmFilePath, "rb");
     if (srmFile == NULL) {
-        printf("No se pudo abrir el archivo SRM: %s\n", filePath);
+        printf("No se pudo abrir el archivo SRM: %s\n", srmFilePath);
         return;
     }
 
@@ -240,9 +264,11 @@ void restoreData(const char* filePath) {
     fclose(srmFile);
 
     // Leer los datos RTC
-    FILE* rtcFile = fopen(filePath, "rb");
+    char rtcFilePath[PATH_MAX];
+    snprintf(rtcFilePath, sizeof(rtcFilePath), "%s.rtc", filePath);
+    FILE* rtcFile = fopen(rtcFilePath, "rb");
     if (rtcFile == NULL) {
-        printf("No se pudo abrir el archivo RTC: %s\n", filePath);
+        printf("No se pudo abrir el archivo RTC: %s\n", rtcFilePath);
         free(srmData);
         return;
     }
@@ -295,11 +321,11 @@ void restoreData(const char* filePath) {
     // Guardar los datos restaurados en el archivo SRM y RTC
 
     // Construir la ruta completa del archivo SRM fuera de la carpeta .netplay
-    char newPath[256];
-    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", getFilename(filePath));
-    printf("Ruta de destino: %s\n", newPath);
+    char newSrmFilePath[PATH_MAX];
+    snprintf(newSrmFilePath, sizeof(newSrmFilePath), "%s.srm", filePath);
+    printf("Ruta de destino SRM: %s\n", newSrmFilePath);
 
-    FILE* newSrmFile = fopen(newPath, "w+b");
+    FILE* newSrmFile = fopen(newSrmFilePath, "w+b");
     if (newSrmFile == NULL) {
         printf("No se pudo abrir el archivo SRM para escritura\n");
         free(srmData);
@@ -316,24 +342,6 @@ void restoreData(const char* filePath) {
     }
 
     fclose(newSrmFile);
-
-    FILE* newRtcFile = fopen(newPath, "wb");
-    if (newRtcFile == NULL) {
-        printf("No se pudo abrir el archivo RTC para escritura\n");
-        free(srmData);
-        free(rtcData);
-        return;
-    }
-
-    if (fwrite(rtcData, 1, rtcFileSize, newRtcFile) != rtcFileSize) {
-        printf("Error al escribir los datos RTC\n");
-        fclose(newRtcFile);
-        free(srmData);
-        free(rtcData);
-        return;
-    }
-
-    fclose(newRtcFile);
 
     free(srmData);
     free(rtcData);
@@ -391,13 +399,13 @@ int main() {
         SDL_Quit();
         return 1;
     }
-    
+
     // Rutas de directorios
     const char* srmDirPath0 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual";
     const char* srmDirPath1 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay";
-    
+
     // Variable para almacenar la ruta seleccionada
-    const char* selectedDirPath = ""; // Valor predeterminado
+    char selectedDirPath[PATH_MAX] = ""; // Valor predeterminado
 
     while (running) {
         SDL_Event event;
@@ -435,20 +443,20 @@ int main() {
                                 selectedOption = 0;
                                 fileListData.numFiles = 0;
                                 listFiles(srmDirPath0, &fileListData);
+                                strcpy(selectedDirPath, srmDirPath0); // Actualizar selectedDirPath
                             } else if (selectedOption == 1) {
                                 currentScreen = 1;
                                 selectedOption = 0;
                                 fileListData.numFiles = 0;
                                 listFiles(srmDirPath1, &fileListData);
+                                strcpy(selectedDirPath, srmDirPath1); // Actualizar selectedDirPath
                             } else if (selectedOption == 2) {
                                 printf("Opción de salida seleccionada\n");
                                 running = false;
                             }
                         } else if (currentScreen == 1) {
                             if (selectedOption >= 0 && selectedOption < fileListData.numFiles) {
-                                
                                 char filePath[256];
-                                selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
                                 snprintf(filePath, sizeof(filePath), "%s/%s", selectedDirPath, fileListData.fileList[selectedOption]);
                                 
                                 if (strcmp(selectedDirPath, srmDirPath0) == 0) {
@@ -464,6 +472,7 @@ int main() {
                                 currentScreen = 0;
                                 selectedOption = 0;
                                 fileListData.numFiles = 0;
+                                strcpy(selectedDirPath, ""); // Reiniciar selectedDirPath
                             }
                         }
                         break;
@@ -472,14 +481,14 @@ int main() {
                             printf("Botón B seleccionado\n");
                             running = false;
                         }
-                        
+
                         if (currentScreen == 1) {
                             printf("Volver al menú principal\n");
                             currentScreen = 0;
                             selectedOption = 0;
                             fileListData.numFiles = 0;
                             freeFileList(&fileListData); // Liberar la memoria del listado de archivos
-                            selectedDirPath = ""; // Reiniciar la variable selectedDirPath
+                            strcpy(selectedDirPath, ""); // Reiniciar selectedDirPath
                         }
                         break;
                     case BUTTON_MENU:
@@ -493,7 +502,7 @@ int main() {
                 }
             }
         }
-        
+
         // Limpiar pantalla
         SDL_FillRect(screen, NULL, 0x000000);
 
@@ -506,37 +515,45 @@ int main() {
             SDL_BlitSurface(titleSurface, NULL, screen, &titleRect);
             SDL_FreeSurface(titleSurface);
 
-            SDL_Surface* option1Surface = renderText("Switch Data", font, selectedOption == 0 ? colorRed : colorWhite);
+            SDL_Surface* option1Surface = renderText("Intercambiar datos guardados", font, (selectedOption == 0) ? colorRed : colorWhite);
             SDL_Rect option1Rect;
             option1Rect.x = WINDOW_WIDTH / 2 - option1Surface->w / 2;
-            option1Rect.y = 150;
+            option1Rect.y = 200;
             SDL_BlitSurface(option1Surface, NULL, screen, &option1Rect);
             SDL_FreeSurface(option1Surface);
 
-            SDL_Surface* option2Surface = renderText("Restore Data", font, selectedOption == 1 ? colorRed : colorWhite);
+            SDL_Surface* option2Surface = renderText("Restaurar datos guardados", font, (selectedOption == 1) ? colorRed : colorWhite);
             SDL_Rect option2Rect;
             option2Rect.x = WINDOW_WIDTH / 2 - option2Surface->w / 2;
-            option2Rect.y = 200;
+            option2Rect.y = 250;
             SDL_BlitSurface(option2Surface, NULL, screen, &option2Rect);
             SDL_FreeSurface(option2Surface);
 
-            SDL_Surface* option3Surface = renderText("Exit", font, selectedOption == 2 ? colorRed : colorWhite);
+            SDL_Surface* option3Surface = renderText("Salir", font, (selectedOption == 2) ? colorRed : colorWhite);
             SDL_Rect option3Rect;
             option3Rect.x = WINDOW_WIDTH / 2 - option3Surface->w / 2;
-            option3Rect.y = 250;
+            option3Rect.y = 300;
             SDL_BlitSurface(option3Surface, NULL, screen, &option3Rect);
             SDL_FreeSurface(option3Surface);
         }
 
         // Mostrar la lista de archivos
-        else if (currentScreen == 1) {
+        if (currentScreen == 1) {
+            SDL_Surface* titleSurface = renderText("Seleccione un archivo:", font, colorWhite);
+            SDL_Rect titleRect;
+            titleRect.x = WINDOW_WIDTH / 2 - titleSurface->w / 2;
+            titleRect.y = 50;
+            SDL_BlitSurface(titleSurface, NULL, screen, &titleRect);
+            SDL_FreeSurface(titleSurface);
+
             for (int i = 0; i < fileListData.numFiles; i++) {
-                SDL_Surface* textSurface = renderText(fileListData.fileList[i], font, i == selectedOption ? colorRed : colorWhite);
-                SDL_Rect textRect;
-                textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-                textRect.y = 50 + (i * 50);
-                SDL_BlitSurface(textSurface, NULL, screen, &textRect);
-                SDL_FreeSurface(textSurface);
+                SDL_Color textColor = (selectedOption == i) ? colorRed : colorWhite;
+                SDL_Surface* fileSurface = renderText(fileListData.fileList[i], font, textColor);
+                SDL_Rect fileRect;
+                fileRect.x = WINDOW_WIDTH / 2 - fileSurface->w / 2;
+                fileRect.y = 150 + i * 50;
+                SDL_BlitSurface(fileSurface, NULL, screen, &fileRect);
+                SDL_FreeSurface(fileSurface);
             }
         }
 
@@ -544,7 +561,7 @@ int main() {
         SDL_Flip(screen);
     }
 
-    // Liberar memoria y recursos
+    // Liberar recursos
     freeFileList(&fileListData);
     TTF_CloseFont(font);
     TTF_Quit();
