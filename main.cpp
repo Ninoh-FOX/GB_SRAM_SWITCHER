@@ -385,6 +385,9 @@ int main() {
     // Rutas de directorios
     const char* srmDirPath0 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual";
     const char* srmDirPath1 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay";
+    
+    // Variable para almacenar la ruta seleccionada
+    const char* selectedDirPath = ""; // Valor predeterminado
 
     while (running) {
         SDL_Event event;
@@ -434,7 +437,7 @@ int main() {
                         } else if (currentScreen == 1) {
                             if (selectedOption >= 0 && selectedOption < fileListData.numFiles) {
                                 char filePath[256];
-                                const char* selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
+                                selectedDirPath = (selectedOption == 0) ? srmDirPath0 : srmDirPath1;
                                 snprintf(filePath, sizeof(filePath), "%s/%s", selectedDirPath, fileListData.fileList[selectedOption]);
                                 if (selectedDirPath == srmDirPath0) {
                                     switchData(filePath);
@@ -461,6 +464,7 @@ int main() {
                             selectedOption = 0;
                             fileListData.numFiles = 0;
                             freeFileList(&fileListData); // Liberar la memoria del listado de archivos
+                            selectedDirPath = ""; // Reiniciar la variable selectedDirPath
                         }
                         break;
                     case BUTTON_MENU:
