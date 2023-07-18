@@ -4,11 +4,6 @@
 #include <string.h>
 #include <dirent.h>
 #include <limits.h>
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <algorithm>
-#include <dirent.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
@@ -37,6 +32,18 @@ SDL_Surface* renderText(const char* text, TTF_Font* font, SDL_Color color) {
         exit(1);
     }
     return textSurface;
+}
+
+// Función personalizada para obtener el nombre de archivo de una ruta
+char* getFilename(const char* path) {
+    char* filename = NULL;
+    const char* lastSlash = strrchr(path, '/');
+    if (lastSlash != NULL) {
+        filename = strdup(lastSlash + 1);
+    } else {
+        filename = strdup(path);
+    }
+    return filename;
 }
 
 void listFiles(const char* dirPath, FileListData* fileData) {
@@ -156,7 +163,7 @@ void switchData(const char *filePath) {
     
     // Construir la ruta completa del archivo SRM en la carpeta .netplay
     char newPath[256];
-    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", basename(filePath));
+    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", getFilename(filePath));
     
     FILE *newSrmFile = fopen(newPath, "wb");
     if (newSrmFile == NULL) {
@@ -287,7 +294,7 @@ void restoreData(const char *filePath) {
     
     // Construir la ruta completa del archivo SRM en fuera la carpeta .netplay
     char newPath[256];
-    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", basename(filePath));
+    snprintf(newPath, sizeof(newPath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", getFilename(filePath));
     
     FILE *newSrmFile = fopen(newPath, "wb");
     if (newSrmFile == NULL) {
