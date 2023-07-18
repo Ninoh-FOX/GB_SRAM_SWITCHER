@@ -16,7 +16,8 @@
 
 // Definición de teclas
 #define BUTTON_A        SDLK_SPACE
-#define BUTTON_B        SDLK_ESCAPE
+#define BUTTON_B        SDLK_LCTRL
+#define BUTTON_MENU     SDLK_ESCAPE
 #define BUTTON_UP       SDLK_UP
 #define BUTTON_DOWN     SDLK_DOWN
 
@@ -452,12 +453,20 @@ int main() {
                         if (currentScreen == 0) {
                             printf("Botón B seleccionado\n");
                             running = false;
-                        } else if (currentScreen == 1) {
+                        }
+                        
+                        if (currentScreen == 1) {
                             printf("Volver al menú principal\n");
                             currentScreen = 0;
                             selectedOption = 0;
                             fileListData.numFiles = 0;
                             freeFileList(&fileListData); // Liberar la memoria del listado de archivos
+                        }
+                        break;
+                    case BUTTON_MENU:
+                        if (currentScreen == 0) {
+                            printf("Cerrando el programa\n");
+                            running = false;
                         }
                         break;
                     default:
