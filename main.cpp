@@ -4,8 +4,15 @@
 #include <string.h>
 #include <dirent.h>
 #include <limits.h>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+#include <dirent.h>
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
 #include <SDL/SDL_ttf.h>
+
 
 // Definición de teclas
 #define BUTTON_A        SDLK_SPACE
@@ -18,18 +25,28 @@
 #define WINDOW_HEIGHT   480
 
 typedef struct {
-    char **fileList;
+    char** fileList;
     int numFiles;
 } FileListData;
 
-void listFiles(const char *dirPath, FileListData *fileData) {
-    struct dirent **namelist;
+SDL_Surface* renderText(const char* text, TTF_Font* font, SDL_Color color) {
+    SDL_Surface* textSurface = TTF_RenderText_Blended(font, text, color);
+    if (textSurface == NULL) {
+        printf("Error al renderizar el texto: %s\n", TTF_GetError());
+        exit(1);
+    }
+    return textSurface;
+}
+
+void listFiles(const char* dirPath, FileListData* fileData) {
+    struct dirent** namelist;
     int numFiles = scandir(dirPath, &namelist, NULL, alphasort);
     if (numFiles < 0) {
         printf("No se pudo abrir el directorio: %s\n", dirPath);
         return;
     }
 
+    fileData->numFiles = 0;
     for (int i = 0; i < numFiles; i++) {
         if (namelist[i]->d_name[0] != '.') {
             fileData->fileList[fileData->numFiles] = strdup(namelist[i]->d_name);
@@ -40,7 +57,7 @@ void listFiles(const char *dirPath, FileListData *fileData) {
     free(namelist);
 }
 
-void freeFileList(FileListData *fileData) {
+void freeFileList(FileListData* fileData) {
     for (int i = 0; i < fileData->numFiles; i++) {
         free(fileData->fileList[i]);
     }
@@ -48,6 +65,8 @@ void freeFileList(FileListData *fileData) {
 }
 
 void switchData(const char *filePath) {
+    printf("Ejecutando switchData para el archivo: %s\n", filePath);
+    
     // Leer los datos SRM
     FILE *srmFile = fopen(filePath, "rb");
     if (srmFile == NULL) {
@@ -177,6 +196,8 @@ void switchData(const char *filePath) {
 }
 
 void restoreData(const char *filePath) {
+    printf("Ejecutando restoreData para el archivo: %s\n", filePath);
+    
     // Leer los datos SRM
     FILE *srmFile = fopen(filePath, "rb");
     if (srmFile == NULL) {
@@ -313,7 +334,7 @@ int main() {
     }
 
     // Crear la ventana
-    SDL_Surface *screen = SDL_SetVideoMode(WINDOW_WIDTH, WINDOW_HEIGHT, 0, SDL_DOUBLEBUF);
+    SDL_Surface* screen = SDL_SetVideoMode(WINDOW_WIDTH, WINDOW_HEIGHT, 0, SDL_DOUBLEBUF);
     if (screen == NULL) {
         printf("No se pudo crear la ventana: %s\n", SDL_GetError());
         SDL_Quit();
@@ -328,7 +349,7 @@ int main() {
     }
 
     // Cargar la fuente
-    TTF_Font *font = TTF_OpenFont("Exo-2-Bold-Italic.ttf", 24);
+    TTF_Font* font = TTF_OpenFont("Exo-2-Bold-Italic.ttf", 24);
     if (font == NULL) {
         printf("No se pudo cargar la fuente: %s\n", TTF_GetError());
         TTF_Quit();
@@ -337,16 +358,29 @@ int main() {
     }
 
     // Crear los colores
-    SDL_Color colorWhite = {255, 255, 255};
-    SDL_Color colorRed = {255, 0, 0};
+    SDL_Color colorWhite = { 255, 255, 255 };
+    SDL_Color colorRed = { 255, 0, 0 };
 
     // Variables para el control del bucle principal
     bool running = true;
+    int currentScreen = 0; // 0: Menu principal, 1: Lista de archivos
     int selectedOption = 0;
-    int MAX_FILES = 256;
     FileListData fileListData;
     fileListData.numFiles = 0;
-    fileListData.fileList = reinterpret_cast<char**>(malloc(sizeof(char*) * MAX_FILES));  // Asegurar suficiente espacio para MAX_FILES nombres de archivo
+    const int MAX_FILES = 256;
+    fileListData.fileList = (char**)malloc(sizeof(char*) * MAX_FILES); // Asegurar suficiente espacio para MAX_FILES nombres de archivo
+    if (fileListData.fileList == NULL) {
+        printf("No se pudo asignar memoria para la lista de archivos\n");
+        TTF_CloseFont(font);
+        TTF_Quit();
+        SDL_Quit();
+        return 1;
+    }
+
+    // Rutas de directorios
+    const char* srmDirPath0 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual";
+    const char* srmDirPath1 = "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay";
+
     while (running) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -355,57 +389,61 @@ int main() {
             } else if (event.type == SDL_KEYDOWN) {
                 switch (event.key.keysym.sym) {
                     case BUTTON_UP:
-                        if (selectedOption > 0) {
-                            selectedOption--;
+                        if (currentScreen == 0) {
+                            if (selectedOption > 0) {
+                                selectedOption--;
+                            }
+                        } else if (currentScreen == 1) {
+                            if (selectedOption > 2) {
+                                selectedOption--;
+                            }
                         }
                         break;
                     case BUTTON_DOWN:
-                        if (selectedOption < 2) {
-                            selectedOption++;
+                        if (currentScreen == 0) {
+                            if (selectedOption < 2) {
+                                selectedOption++;
+                            }
+                        } else if (currentScreen == 1) {
+                            if (selectedOption < fileListData.numFiles - 1) {
+                                selectedOption++;
+                            }
                         }
                         break;
                     case BUTTON_A:
-                        switch (selectedOption) {
-                            case 0:
-                                printf("Seleccionaste 'Intercambiar datos SRM'\n");
-                                if (fileListData.numFiles > 0 && selectedOption < fileListData.numFiles) {
-                                    char filePath[256];
-                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/%s", fileListData.fileList[selectedOption]);
-                                    switchData(filePath);
-                                }
-                                
-                                for (int i = 0; i < fileListData.numFiles; i++) {
-                                    free(fileListData.fileList[i]);
-                                }
-                                freeFileList(&fileListData);
-                                fileListData.numFiles = 0;
-                                listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual", &fileListData);
-                                break;
-                            case 1:
-                                printf("Seleccionaste 'Restaurar datos SRM'\n");
-                                if (fileListData.numFiles > 0 && selectedOption < fileListData.numFiles) {
-                                    char filePath[256];
-                                    snprintf(filePath, sizeof(filePath), "/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay/%s", fileListData.fileList[selectedOption]);
-                                    restoreData(filePath);
-                                }
-                                
-                                for (int i = 0; i < fileListData.numFiles; i++) {
-                                    free(fileListData.fileList[i]);
-                                }
-                                freeFileList(&fileListData);
-                                fileListData.numFiles = 0;
-                                listFiles("/mnt/SDCARD/Saves/RA_saves/TGB Dual/.netplay", &fileListData);
-                                break;
-                            case 2:
-                                running = false;
-                                break;
+                        if (currentScreen == 0) {
+                            currentScreen = 1;
+                            selectedOption = 2;
+                            fileListData.numFiles = 0;
+                            if (selectedOption == 2) {
+                                listFiles(srmDirPath0, &fileListData);
+                            } else if (selectedOption == 3) {
+                                listFiles(srmDirPath1, &fileListData);
+                            }
+                        } else if (currentScreen == 1) {
+                            if (selectedOption == 2) {
+                                char filePath[256];
+                                snprintf(filePath, sizeof(filePath), "%s/%s", srmDirPath0, fileListData.fileList[selectedOption]);
+                                switchData(filePath);
+                                printf("Datos conmutados exitosamente\n");
+                            } else if (selectedOption == 3) {
+                                char filePath[256];
+                                snprintf(filePath, sizeof(filePath), "%s/%s", srmDirPath1, fileListData.fileList[selectedOption]);
+                                restoreData(filePath);
+                                printf("Datos restaurados exitosamente\n");
+                            }
+                            currentScreen = 0;
+                            selectedOption = 0;
                         }
                         break;
                     case BUTTON_B:
-                        printf("Volviendo al menú principal\n");
-						freeFileList(&fileListData);
-                        fileListData.numFiles = 0;
-                        selectedOption = 0;
+                        if (currentScreen == 0) {
+                            running = false;
+                        } else if (currentScreen == 1) {
+                            currentScreen = 0;
+                            selectedOption = 0;
+                            fileListData.numFiles = 0;
+                        }
                         break;
                     default:
                         break;
@@ -413,46 +451,60 @@ int main() {
             }
         }
 
-        // Limpiar la pantalla
-        SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 0, 0, 0));
+        // Limpiar pantalla
+        SDL_FillRect(screen, NULL, 0x000000);
 
-        // Renderizar el menú principal
-        SDL_Surface *textSurface;
-        SDL_Rect textRect;
+        // Mostrar el menú principal
+        if (currentScreen == 0) {
+            SDL_Surface* titleSurface = renderText("GameBoy SRAM Switcher", font, colorWhite);
+            SDL_Rect titleRect;
+            titleRect.x = WINDOW_WIDTH / 2 - titleSurface->w / 2;
+            titleRect.y = 50;
+            SDL_BlitSurface(titleSurface, NULL, screen, &titleRect);
+            SDL_FreeSurface(titleSurface);
 
-        textSurface = TTF_RenderText_Blended(font, "GameBoy SRAM switcher", colorWhite);
-        textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-        textRect.y = 50;
-        SDL_BlitSurface(textSurface, NULL, screen, &textRect);
-        SDL_FreeSurface(textSurface);
+            SDL_Surface* option1Surface = renderText("Switch Data", font, selectedOption == 0 ? colorRed : colorWhite);
+            SDL_Rect option1Rect;
+            option1Rect.x = WINDOW_WIDTH / 2 - option1Surface->w / 2;
+            option1Rect.y = 150;
+            SDL_BlitSurface(option1Surface, NULL, screen, &option1Rect);
+            SDL_FreeSurface(option1Surface);
 
-        textSurface = TTF_RenderText_Blended(font, "Intercambiar datos SRM", selectedOption == 0 ? colorRed : colorWhite);
-        textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-        textRect.y = 150;
-        SDL_BlitSurface(textSurface, NULL, screen, &textRect);
-        SDL_FreeSurface(textSurface);
+            SDL_Surface* option2Surface = renderText("Restore Data", font, selectedOption == 1 ? colorRed : colorWhite);
+            SDL_Rect option2Rect;
+            option2Rect.x = WINDOW_WIDTH / 2 - option2Surface->w / 2;
+            option2Rect.y = 200;
+            SDL_BlitSurface(option2Surface, NULL, screen, &option2Rect);
+            SDL_FreeSurface(option2Surface);
 
-        textSurface = TTF_RenderText_Blended(font, "Restaurar datos SRM", selectedOption == 1 ? colorRed : colorWhite);
-        textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-        textRect.y = 200;
-        SDL_BlitSurface(textSurface, NULL, screen, &textRect);
-        SDL_FreeSurface(textSurface);
+            // Actualizar la ventana
+            SDL_Flip(screen);
+        }
 
-        textSurface = TTF_RenderText_Blended(font, "Salir", selectedOption == 2 ? colorRed : colorWhite);
-        textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
-        textRect.y = 250;
-        SDL_BlitSurface(textSurface, NULL, screen, &textRect);
-        SDL_FreeSurface(textSurface);
+        // Listar archivos
+        if (currentScreen == 1) {
+            int startIdx = (selectedOption == 2 || selectedOption == 3) ? 0 : ((selectedOption - 2) < 0 ? 0 : (selectedOption - 2));
+            int endIdx = (startIdx + 4) > fileListData.numFiles ? fileListData.numFiles : (startIdx + 4);
 
-        // Actualizar la ventana
-        SDL_Flip(screen);
+            for (int i = startIdx; i < endIdx; i++) {
+                SDL_Surface* textSurface = renderText(fileListData.fileList[i], font, i == selectedOption ? colorRed : colorWhite);
+                SDL_Rect textRect;
+                textRect.x = WINDOW_WIDTH / 2 - textSurface->w / 2;
+                textRect.y = 150 + (i - startIdx) * 50;
+                SDL_BlitSurface(textSurface, NULL, screen, &textRect);
+                SDL_FreeSurface(textSurface);
+            }
+
+            // Actualizar la ventana
+            SDL_Flip(screen);
+        }
     }
 
     // Liberar recursos
+    freeFileList(&fileListData);
     TTF_CloseFont(font);
     TTF_Quit();
     SDL_Quit();
-    freeFileList(&fileListData);
 
     return 0;
 }
