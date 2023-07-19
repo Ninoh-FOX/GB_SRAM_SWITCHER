@@ -181,10 +181,10 @@ void switchData(const char* filePath) {
 
     // Construir la ruta completa del archivo SRM en la carpeta .netplay
     char newSrmFilePath[PATH_MAX];
-    snprintf(newSrmFilePath, sizeof(newSrmFilePath), "%s/.netplay/%s.srm", filePath, getFilename(filePath));
+    snprintf(newSrmFilePath, sizeof(newSrmFilePath), "%s/.netplay/%s.srm", filePath, getFileNameWithoutExtension(filePath));
     printf("Ruta de destino SRM: %s\n", newSrmFilePath);
 
-    FILE* newSrmFile = fopen(newSrmFilePath, "w+b");
+    FILE* newSrmFile = fopen(newSrmFilePath, "wb");
     if (newSrmFile == NULL) {
         printf("No se pudo abrir el archivo SRM para escritura\n");
         free(srmData);
@@ -204,10 +204,10 @@ void switchData(const char* filePath) {
 
     // Construir la ruta completa del archivo RTC en la carpeta .netplay
     char newRtcFilePath[PATH_MAX];
-    snprintf(newRtcFilePath, sizeof(newRtcFilePath), "%s/.netplay/%s.rtc", filePath, getFilename(filePath));
+    snprintf(newRtcFilePath, sizeof(newRtcFilePath), "%s/.netplay/%s.rtc", filePath, getFileNameWithoutExtension(filePath));
     printf("Ruta de destino RTC: %s\n", newRtcFilePath);
 
-    FILE* newRtcFile = fopen(newRtcFilePath, "w+b");
+    FILE* newRtcFile = fopen(newRtcFilePath, "wb");
     if (newRtcFile == NULL) {
         printf("No se pudo abrir el archivo RTC para escritura\n");
         free(srmData);
@@ -318,30 +318,51 @@ void restoreData(const char* filePath) {
     free(tempRtc1);
     free(tempRtc2);
 
-    // Guardar los datos restaurados en el archivo SRM y RTC
+    // Construir la ruta completa del archivo SRM original
+    char originalSrmFilePath[PATH_MAX];
+    snprintf(originalSrmFilePath, sizeof(originalSrmFilePath), "%s/.netplay/%s.srm", filePath, getFileNameWithoutExtension(filePath));
+    printf("Ruta del archivo SRM original: %s\n", originalSrmFilePath);
 
-    // Construir la ruta completa del archivo SRM fuera de la carpeta .netplay
-    char newSrmFilePath[PATH_MAX];
-    snprintf(newSrmFilePath, sizeof(newSrmFilePath), "%s.srm", filePath);
-    printf("Ruta de destino SRM: %s\n", newSrmFilePath);
-
-    FILE* newSrmFile = fopen(newSrmFilePath, "w+b");
-    if (newSrmFile == NULL) {
-        printf("No se pudo abrir el archivo SRM para escritura\n");
+    FILE* originalSrmFile = fopen(originalSrmFilePath, "wb");
+    if (originalSrmFile == NULL) {
+        printf("No se pudo abrir el archivo SRM original para escritura\n");
         free(srmData);
         free(rtcData);
         return;
     }
 
-    if (fwrite(srmData, 1, srmFileSize, newSrmFile) != srmFileSize) {
-        printf("Error al escribir los datos SRM\n");
-        fclose(newSrmFile);
+    if (fwrite(srmData, 1, srmFileSize, originalSrmFile) != srmFileSize) {
+        printf("Error al restaurar los datos SRM\n");
+        fclose(originalSrmFile);
         free(srmData);
         free(rtcData);
         return;
     }
 
-    fclose(newSrmFile);
+    fclose(originalSrmFile);
+
+    // Construir la ruta completa del archivo RTC original
+    char originalRtcFilePath[PATH_MAX];
+    snprintf(originalRtcFilePath, sizeof(originalRtcFilePath), "%s/.netplay/%s.rtc", filePath, getFileNameWithoutExtension(filePath));
+    printf("Ruta del archivo RTC original: %s\n", originalRtcFilePath);
+
+    FILE* originalRtcFile = fopen(originalRtcFilePath, "wb");
+    if (originalRtcFile == NULL) {
+        printf("No se pudo abrir el archivo RTC original para escritura\n");
+        free(srmData);
+        free(rtcData);
+        return;
+    }
+
+    if (fwrite(rtcData, 1, rtcFileSize, originalRtcFile) != rtcFileSize) {
+        printf("Error al restaurar los datos RTC\n");
+        fclose(originalRtcFile);
+        free(srmData);
+        free(rtcData);
+        return;
+    }
+
+    fclose(originalRtcFile);
 
     free(srmData);
     free(rtcData);
@@ -561,10 +582,11 @@ int main() {
         SDL_Flip(screen);
     }
 
-    // Liberar recursos
-    freeFileList(&fileListData);
+    // Liberar memoria y cerrar SDL al finalizar
+    freeFileList(&fileData);
     TTF_CloseFont(font);
     TTF_Quit();
+    IMG_Quit();
     SDL_Quit();
 
     return 0;
